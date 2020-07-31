@@ -8,6 +8,7 @@ name = "pypi"
 [packages]
 flask = "*"
 boto3 = "1.4.4"
+requests = "2.22.0"
 
 [requires]
 python_version = "2.7"

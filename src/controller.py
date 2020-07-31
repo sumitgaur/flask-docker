@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -45,10 +46,13 @@ def upload_file():
         if file and allowed_file(file.filename):
             file_tmp_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(file_tmp_path)
-            upload_to_s3(file_tmp_path, BUCKET, "{}/{}".format(WATCH_DIR, file.filename))
+            object_name = "{}/{}".format(WATCH_DIR, file.filename)
+            upload_to_s3(file_tmp_path, BUCKET, object_name)
+
             flash("File uploaded to S3 and submitted for extraction. \n S3 Object Key - " + "{}/{}/{}".format(BUCKET,
                                                                                                               WATCH_DIR,
                                                                                                               file.filename))
+            trigger_dag(object_name)
             return redirect(request.url)
 
     return render_template_string('''
@@ -81,7 +85,32 @@ def upload_to_s3(file_name, bucket, object_name):
     return response
 
 
+def trigger_dag(object_name):
+    """
+
+    :param object_name:
+    :return:
+    """
+    import requests, os
+    airflow_server = os.environ.get('AIRFLOW_SERVER', None)
+    if not airflow_server:
+        raise KeyError("Airflow server address not passed.Please set AIRFLOW_SERVER env.")
+
+    url = "http://{}/api/experimental/dags/s3_dag_test/dag_runs".format(airflow_server)
+    print("hitting ")
+    # payload = "{\"conf\":\"{\\\"s3_object_key\\\":\\\"Message from external using python code \\\"}\"}"
+    payload = json.dumps({"conf": {"s3_object_key": object_name}})
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    print(response.text.encode('utf8'))
+
+
 BUCKET = 'textract-gs'
 WATCH_DIR = 'file-watch-dir'
 
+trigger_dag("file-watch-dir/0110_099.png")
 # upload_to_s3('/tmp/0110_099.png',BUCKET,'file-watch-dir/0110_099.png')
