@@ -1,4 +1,7 @@
-FROM frolvlad/alpine-python2:latest
+FROM python:2.7-alpine
+RUN apk update && \
+    apk add --virtual build-deps gcc python-dev musl-dev && \
+    apk add postgresql-dev
 ARG proxy
 ENV https_proxy=$proxy \
 	LANG=en_US.UTF-8 \
